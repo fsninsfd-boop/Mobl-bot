@@ -2,9 +2,11 @@
   "name": "discord-orb-bot",
   "version": "1.0.0",
   "private": true,
+  "description": "Bot seguro do Discord para registrar missões e Orbs manualmente.",
   "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
   },
   "engines": {
     "node": ">=20"

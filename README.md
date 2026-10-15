@@ -1,51 +1,40 @@
-# Mobl-bot
+# Discord Orb Bot
 
-Bot Discord para registrar e consultar Orbs obtidos manualmente em missões.
+Bot seguro para **registrar manualmente** missões e recompensas de Orbs no Discord.
 
-## Requisitos
-
-- Node.js 20 ou superior;
-- Uma aplicação criada no [Discord Developer Portal](https://discord.com/developers/applications);
-- Token do bot e o Application ID (`CLIENT_ID`).
-
-## Configuração
-
-1. Instale as dependências:
-
-   ```bash
-   npm ci
-   ```
-
-2. Copie `.env.example` para `.env` e preencha os valores:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   `GUILD_ID` é opcional. Quando informado, os comandos são registrados imediatamente no servidor de teste; sem ele, são registrados globalmente e podem levar algum tempo para aparecer.
-
-3. No Developer Portal, convide o bot com os escopos `bot` e `applications.commands`.
-
-4. Inicie:
-
-   ```bash
-   npm start
-   ```
+> Este bot não abre anúncios, não simula visualizações, não usa self-bot e não automatiza sua conta. Você registra a recompensa depois de concluir a missão manualmente.
 
 ## Comandos
 
-- `/orb ajuda` — mostra as instruções;
-- `/orb registrar quantidade:<n> missao:<nome>` — registra Orbs recebidos manualmente;
-- `/orb saldo` — mostra o saldo do usuário no servidor atual;
-- `/orb historico` — mostra os dez registros mais recentes do usuário no servidor atual;
-- `/orb ranking` — mostra os dez maiores saldos do servidor atual.
+- `/orb saldo` — mostra o saldo registrado do usuário.
+- `/orb registrar quantidade:<número> missão:<nome>` — registra Orbs recebidos manualmente.
+- `/orb historico` — mostra os últimos registros do usuário.
+- `/orb ranking` — mostra o ranking do servidor com base nos registros.
+- `/orb ajuda` — exibe a ajuda.
 
-Os dados são salvos em `data/orbs.json`, criado automaticamente. O bot não automatiza anúncios, cliques ou ações de usuário no Discord.
+## Instalação
 
-## Desenvolvimento
-
-Valide a sintaxe antes de iniciar:
+1. Instale Node.js 20 ou superior.
+2. Crie um aplicativo em [Discord Developer Portal](https://discord.com/developers/applications).
+3. Em **Bot**, crie o bot e copie o token. Nunca envie esse token para ninguém.
+4. Em **OAuth2 > URL Generator**, selecione os scopes `bot` e `applications.commands`.
+5. Dê somente as permissões necessárias: `View Channels`, `Send Messages` e `Use Slash Commands`.
+6. Copie `.env.example` para `.env` e preencha `DISCORD_TOKEN` e `CLIENT_ID`.
+7. Para testes, preencha também `GUILD_ID` com o ID do seu servidor.
+8. Execute:
 
 ```bash
-node --check index.js
+npm install
+npm start
 ```
+
+## Armazenamento
+
+Os registros ficam em `data/orbs.json`, localmente. O arquivo é ignorado pelo Git. Faça backup privado se necessário e não publique dados pessoais.
+
+## Segurança
+
+- Não coloque o token no código.
+- Não dê permissões de administrador ao bot.
+- Não use automação para assistir anúncios ou concluir missões.
+- Se o token vazar, gere outro imediatamente no Developer Portal.
