@@ -145,8 +145,11 @@ client.on('interactionCreate', async (interaction) => {
     if (sub === 'cargo-aleatorio') {
       if (!interaction.inGuild()) return interaction.reply({ ephemeral: true, content: 'Este comando só pode ser usado dentro de um servidor.' });
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) return interaction.reply({ ephemeral: true, content: 'Você precisa da permissão **Gerenciar Cargos** para usar este comando.' });
-      const target = interaction.options.getMember('membro') || interaction.member;
+      const targetUser = interaction.options.getUser('membro') || interaction.user;
+      const target = await interaction.guild.members.fetch(targetUser.id);
       const me = interaction.guild.members.me || await interaction.guild.members.fetchMe();
+      if (target.id === interaction.guild.ownerId) return interaction.reply({ ephemeral: true, content: 'Por segurança, não atribuo cargos automaticamente ao dono do servidor.' });
+      if (target.roles.highest.position >= me.roles.highest.position && target.id !== me.id) return interaction.reply({ ephemeral: true, content: 'Não consigo atribuir um cargo a esse membro porque ele está no mesmo nível ou acima do cargo mais alto do bot.' });
       if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) return interaction.reply({ ephemeral: true, content: 'O bot precisa da permissão **Gerenciar Cargos**.' });
       const name = randomRoleName();
       const role = await interaction.guild.roles.create({ name, reason: `Cargo aleatório solicitado por ${interaction.user.tag}` });
