@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,8 @@ function required(name) {
 const token = required('DISCORD_TOKEN');
 const clientId = required('CLIENT_ID');
 const guildId = process.env.GUILD_ID?.trim();
+const RANDOM_ROLE_NAMES = ['Explorador', 'Guardião', 'Estrategista', 'Pioneiro', 'Comandante', 'Aventureiro', 'Arquiteto', 'Sentinela', 'Mestre', 'Cronista'];
+
 const commands = [
   new SlashCommandBuilder().setName('orb').setDescription('Controla seus registros de Orbs')
     .addSubcommand((sub) => sub.setName('saldo').setDescription('Mostra seu saldo registrado'))
@@ -30,6 +32,8 @@ const commands = [
       .addIntegerOption((opt) => opt.setName('quantidade').setDescription('Meta de Orbs').setRequired(true).setMinValue(1).setMaxValue(1000000000)))
     .addSubcommand((sub) => sub.setName('resumo').setDescription('Mostra estatísticas dos seus registros'))
     .addSubcommand((sub) => sub.setName('exportar').setDescription('Exporta seu histórico em formato resumido'))
+    .addSubcommand((sub) => sub.setName('cargo-aleatorio').setDescription('Cria e atribui um cargo seguro com nome aleatório')
+      .addUserOption((opt) => opt.setName('membro').setDescription('Membro que receberá o cargo; padrão: você')))
     .addSubcommand((sub) => sub.setName('ajuda').setDescription('Mostra como usar o bot'))
     .toJSON(),
 ];
@@ -68,6 +72,12 @@ function formatNumber(value) {
   return Number(value).toLocaleString('pt-BR');
 }
 
+function randomRoleName() {
+  const name = RANDOM_ROLE_NAMES[Math.floor(Math.random() * RANDOM_ROLE_NAMES.length)];
+  const suffix = Math.floor(1000 + Math.random() * 9000);
+  return `${name} ${suffix}`;
+}
+
 function progressBar(total, goal) {
   if (!goal) return 'Nenhuma meta definida.';
   const percent = Math.min(100, Math.round((total / goal) * 100));
@@ -93,7 +103,7 @@ client.on('interactionCreate', async (interaction) => {
     const sub = interaction.options.getSubcommand();
 
     if (sub === 'ajuda') {
-      return interaction.reply({ ephemeral: true, content: '**Bot seguro de Orbs**\nUse `/orb registrar` depois de concluir uma missão manualmente. O bot não assiste anúncios nem automatiza o Discord.\n\nComandos: `saldo`, `registrar`, `historico`, `ranking`, `meta`, `definir-meta`, `resumo` e `exportar`.' });
+      return interaction.reply({ ephemeral: true, content: '**Bot seguro de Orbs**\nUse `/orb registrar` depois de concluir uma missão manualmente. O bot não assiste anúncios nem automatiza o Discord.\n\nComandos: `saldo`, `registrar`, `historico`, `ranking`, `meta`, `definir-meta`, `resumo`, `exportar` e `cargo-aleatorio`.' });
     }
     if (sub === 'saldo') {
       return interaction.reply({ content: `**${interaction.user.username}**, seu saldo registrado é **${formatNumber(record.total)} Orbs**.` });
@@ -131,6 +141,25 @@ client.on('interactionCreate', async (interaction) => {
       const average = count ? Math.round(record.total / count) : 0;
       const last = record.entries.at(-1);
       return interaction.reply({ ephemeral: true, content: `**Seu resumo**\nTotal: **${formatNumber(record.total)} Orbs**\nRegistros: **${formatNumber(count)}**\nMédia por registro: **${formatNumber(average)} Orbs**\nÚltimo registro: ${last ? `+${formatNumber(last.amount)} — ${last.mission}` : 'nenhum'}` });
+    }
+    if (sub === 'cargo-aleatorio') {
+      if (!interaction.inGuild()) return interaction.reply({ ephemeral: true, content: 'Este comando só pode ser usado dentro de um servidor.' });
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) return interaction.reply({ ephemeral: true, content: 'Você precisa da permissão **Gerenciar Cargos** para usar este comando.' });
+      const target = interaction.options.getMember('membro') || interaction.member;
+      const me = interaction.guild.members.me || await interaction.guild.members.fetchMe();
+      if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) return interaction.reply({ ephemeral: true, content: 'O bot precisa da permissão **Gerenciar Cargos**.' });
+      const name = randomRoleName();
+      const role = await interaction.guild.roles.create({ name, reason: `Cargo aleatório solicitado por ${interaction.user.tag}` });
+      if (role.position >= me.roles.highest.position) {
+        await role.delete('Cargo fora da hierarquia do bot');
+        return interaction.reply({ ephemeral: true, content: 'Não consegui atribuir o cargo porque ele ficou acima do cargo mais alto do bot.' });
+      }
+      await target.roles.add(role, `Cargo aleatório solicitado por ${interaction.user.tag}`);
+      db.audit ??= [];
+      db.audit.push({ action: 'random_role_created_and_assigned', roleId: role.id, roleName: role.name, memberId: target.id, by: interaction.user.id, at: new Date().toISOString() });
+      db.audit = db.audit.slice(-500);
+      await saveDb(db);
+      return interaction.reply({ content: `Cargo **${role.name}** criado e atribuído a **${target.user.username}**.` });
     }
     if (sub === 'exportar') {
       const entries = record.entries.slice(-50).reverse();

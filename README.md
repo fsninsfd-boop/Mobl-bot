@@ -11,6 +11,7 @@ Bot seguro para **registrar manualmente** missões e recompensas de Orbs no Disc
 - `/orb historico` — mostra os últimos registros do usuário.
 - `/orb ranking` — mostra o ranking do servidor com base nos registros.
 - `/orb ajuda` — exibe a ajuda.
+- `/orb cargo-aleatorio [membro]` — cria um cargo seguro com nome aleatório e o atribui ao membro; exige Gerenciar Cargos.
 
 ## Instalação
 
@@ -21,7 +22,8 @@ Bot seguro para **registrar manualmente** missões e recompensas de Orbs no Disc
 5. Dê somente as permissões necessárias: `View Channels`, `Send Messages` e `Use Slash Commands`.
 6. Copie `.env.example` para `.env` e preencha `DISCORD_TOKEN` e `CLIENT_ID`.
 7. Para testes, preencha também `GUILD_ID` com o ID do seu servidor.
-8. Execute:
+8. Convide o bot com `bot` e `applications.commands`, concedendo apenas `View Channels`, `Send Messages`, `Use Slash Commands` e, para `cargo-aleatorio`, `Manage Roles`.
+9. Execute:
 
 ```bash
 npm install
