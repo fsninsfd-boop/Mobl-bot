@@ -24,14 +24,29 @@ const commands = [
     .addSubcommand((sub) => sub.setName('saldo').setDescription('Mostra seu saldo registrado'))
     .addSubcommand((sub) => sub.setName('registrar').setDescription('Registra Orbs recebidos manualmente')
       .addIntegerOption((opt) => opt.setName('quantidade').setDescription('Quantidade de Orbs').setRequired(true).setMinValue(1).setMaxValue(1000000))
-      .addStringOption((opt) => opt.setName('missao').setDescription('Nome da missão').setRequired(true).setMaxLength(100)))
+      .addStringOption((opt) => opt.setName('missao').setDescription('Nome da missão').setRequired(true).setMaxLength(100))
+      .addStringOption((opt) => opt.setName('categoria').setDescription('Categoria da missão').setRequired(false).addChoices(
+        { name: 'Diária', value: 'diaria' },
+        { name: 'Semanal', value: 'semanal' },
+        { name: 'Evento', value: 'evento' },
+        { name: 'Outra', value: 'outra' }
+      )))
     .addSubcommand((sub) => sub.setName('historico').setDescription('Mostra seus últimos registros'))
-    .addSubcommand((sub) => sub.setName('ranking').setDescription('Mostra o ranking deste servidor'))
+    .addSubcommand((sub) => sub.setName('ranking').setDescription('Mostra o ranking deste servidor')
+      .addStringOption((opt) => opt.setName('periodo').setDescription('Período do ranking').setRequired(false).addChoices(
+        { name: 'Geral', value: 'geral' },
+        { name: 'Hoje', value: 'hoje' },
+        { name: 'Últimos 7 dias', value: '7dias' },
+        { name: 'Últimos 30 dias', value: '30dias' }
+      )))
     .addSubcommand((sub) => sub.setName('meta').setDescription('Mostra seu progresso para a meta'))
     .addSubcommand((sub) => sub.setName('definir-meta').setDescription('Define sua meta pessoal de Orbs')
       .addIntegerOption((opt) => opt.setName('quantidade').setDescription('Meta de Orbs').setRequired(true).setMinValue(1).setMaxValue(1000000000)))
     .addSubcommand((sub) => sub.setName('resumo').setDescription('Mostra estatísticas dos seus registros'))
     .addSubcommand((sub) => sub.setName('exportar').setDescription('Exporta seu histórico em formato resumido'))
+    .addSubcommand((sub) => sub.setName('sugestao').setDescription('Envia uma sugestão para o bot')
+      .addStringOption((opt) => opt.setName('texto').setDescription('Sua sugestão').setRequired(true).setMaxLength(500)))
+    .addSubcommand((sub) => sub.setName('sugestoes').setDescription('Mostra sugestões recentes'))
     .addSubcommand((sub) => sub.setName('cargo-aleatorio').setDescription('Cria e atribui um cargo seguro com nome aleatório')
       .addUserOption((opt) => opt.setName('membro').setDescription('Membro que receberá o cargo; padrão: você')))
     .addSubcommand((sub) => sub.setName('ajuda').setDescription('Mostra como usar o bot'))
@@ -66,6 +81,12 @@ function userRecord(db, userId, username) {
 
 function safeMission(value) {
   return value.replace(/[\\n\\r]/g, ' ').trim().slice(0, 100);
+}
+
+function periodStart(period) {
+  const now = Date.now();
+  const days = period === 'hoje' ? 1 : period === '7dias' ? 7 : period === '30dias' ? 30 : 0;
+  return days ? now - days * 24 * 60 * 60 * 1000 : 0;
 }
 
 function formatNumber(value) {
@@ -103,7 +124,7 @@ client.on('interactionCreate', async (interaction) => {
     const sub = interaction.options.getSubcommand();
 
     if (sub === 'ajuda') {
-      return interaction.reply({ ephemeral: true, content: '**Bot seguro de Orbs**\nUse `/orb registrar` depois de concluir uma missão manualmente. O bot não assiste anúncios nem automatiza o Discord.\n\nComandos: `saldo`, `registrar`, `historico`, `ranking`, `meta`, `definir-meta`, `resumo`, `exportar` e `cargo-aleatorio`.' });
+      return interaction.reply({ ephemeral: true, content: '**Bot seguro de Orbs**\nUse `/orb registrar` depois de concluir uma missão manualmente. O bot não assiste anúncios nem automatiza o Discord.\n\nComandos: `saldo`, `registrar`, `historico`, `ranking`, `meta`, `definir-meta`, `resumo`, `exportar`, `sugestao`, `sugestoes` e `cargo-aleatorio`.' });
     }
     if (sub === 'saldo') {
       return interaction.reply({ content: `**${interaction.user.username}**, seu saldo registrado é **${formatNumber(record.total)} Orbs**.` });
@@ -111,8 +132,9 @@ client.on('interactionCreate', async (interaction) => {
     if (sub === 'registrar') {
       const amount = interaction.options.getInteger('quantidade', true);
       const mission = safeMission(interaction.options.getString('missao', true));
+      const category = interaction.options.getString('categoria') || 'outra';
       record.total += amount;
-      record.entries.push({ amount, mission, at: new Date().toISOString(), guildId: interaction.guildId });
+      record.entries.push({ amount, mission, category, at: new Date().toISOString(), guildId: interaction.guildId });
       record.entries = record.entries.slice(-100);
       await saveDb(db);
       return interaction.reply({ content: `Registro salvo: **+${formatNumber(amount)} Orbs** pela missão **${mission}**. Saldo: **${formatNumber(record.total)} Orbs**.` });
@@ -124,9 +146,25 @@ client.on('interactionCreate', async (interaction) => {
       return interaction.reply({ ephemeral: true, content: `**Seu histórico recente**\n${lines.join('\n')}` });
     }
     if (sub === 'ranking') {
-      const rows = Object.values(db.users).sort((a, b) => b.total - a.total).slice(0, 10);
-      const lines = rows.length ? rows.map((row, i) => `${i + 1}. **${row.username}** — ${formatNumber(row.total)} Orbs`) : ['Ainda não há registros.'];
-      return interaction.reply({ embeds: [new EmbedBuilder().setTitle('Ranking de Orbs').setDescription(lines.join('\n')).setColor(0x5865f2)] });
+      const period = interaction.options.getString('periodo') || 'geral';
+      const start = periodStart(period);
+      const rows = Object.values(db.users).map((row) => ({ ...row, periodTotal: period === 'geral' ? row.total : row.entries.filter((entry) => new Date(entry.at).getTime() >= start).reduce((sum, entry) => sum + entry.amount, 0) })).filter((row) => row.periodTotal > 0).sort((a, b) => b.periodTotal - a.periodTotal).slice(0, 10);
+      const lines = rows.length ? rows.map((row, i) => `${i + 1}. **${row.username}** — ${formatNumber(row.periodTotal)} Orbs`) : ['Ainda não há registros neste período.'];
+      return interaction.reply({ embeds: [new EmbedBuilder().setTitle(`Ranking de Orbs — ${period}`).setDescription(lines.join('\n')).setColor(0x5865f2)] });
+    }
+    if (sub === 'sugestao') {
+      const text = interaction.options.getString('texto', true).replace(/[\n\r]/g, ' ').trim();
+      db.suggestions ??= [];
+      db.suggestions.push({ id: db.suggestions.length + 1, text, userId: interaction.user.id, username: interaction.user.username, status: 'aberta', at: new Date().toISOString() });
+      db.suggestions = db.suggestions.slice(-200);
+      await saveDb(db);
+      return interaction.reply({ ephemeral: true, content: 'Sugestão registrada. Obrigado por ajudar a melhorar o bot.' });
+    }
+    if (sub === 'sugestoes') {
+      const suggestions = (db.suggestions || []).slice(-10).reverse();
+      if (!suggestions.length) return interaction.reply({ ephemeral: true, content: 'Ainda não há sugestões.' });
+      const lines = suggestions.map((item) => `#${item.id} — ${item.text} (${item.status})`);
+      return interaction.reply({ ephemeral: true, content: `**Sugestões recentes**\n${lines.join('\n')}` });
     }
     if (sub === 'meta') {
       return interaction.reply({ ephemeral: true, content: record.goal ? `Sua meta é **${formatNumber(record.goal)} Orbs**.\nProgresso: **${formatNumber(record.total)} / ${formatNumber(record.goal)}**\n${progressBar(record.total, record.goal)}` : 'Você ainda não definiu uma meta. Use `/orb definir-meta quantidade:<valor>`.' });

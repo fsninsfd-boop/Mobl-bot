@@ -7,9 +7,11 @@ Bot seguro para **registrar manualmente** missões e recompensas de Orbs no Disc
 ## Comandos
 
 - `/orb saldo` — mostra o saldo registrado do usuário.
-- `/orb registrar quantidade:<número> missão:<nome>` — registra Orbs recebidos manualmente.
+- `/orb registrar quantidade:<número> missão:<nome> [categoria]` — registra Orbs recebidos manualmente por categoria.
 - `/orb historico` — mostra os últimos registros do usuário.
-- `/orb ranking` — mostra o ranking do servidor com base nos registros.
+- `/orb ranking [periodo]` — mostra o ranking geral, diário, semanal ou mensal.
+- `/orb sugestao texto:<texto>` — envia uma sugestão.
+- `/orb sugestoes` — mostra sugestões recentes.
 - `/orb ajuda` — exibe a ajuda.
 - `/orb cargo-aleatorio [membro]` — cria um cargo seguro com nome aleatório e o atribui ao membro; exige Gerenciar Cargos.
 
