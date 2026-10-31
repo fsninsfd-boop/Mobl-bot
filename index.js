@@ -135,7 +135,7 @@ client.on('interactionCreate', async (interaction) => {
     if (sub === 'exportar') {
       const entries = record.entries.slice(-50).reverse();
       const text = entries.length ? entries.map((entry) => `${entry.at} | +${entry.amount} Orbs | ${entry.mission}`).join('\n') : 'Nenhum registro.';
-      return interaction.reply({ ephemeral: true, content: `ni]\nSaldo: ${record.total} Orbs\nMeta: ${record.goal || 'não definida'}\n\n${text.slice(0, 1800)}\nni]` });
+      return interaction.reply({ ephemeral: true, content: `\`\`\`text\nSaldo: ${record.total} Orbs\nMeta: ${record.goal || 'não definida'}\n\n${text.slice(0, 1800)}\n\`\`\`` });
     }
   } catch (error) {
     console.error(error);
